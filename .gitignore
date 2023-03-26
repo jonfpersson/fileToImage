@@ -1,5 +1,7 @@
 # Prerequisites
 *.d
+opencv/
+pics/
 
 # Compiled Object files
 *.slo
@@ -30,3 +32,6 @@
 *.exe
 *.out
 *.app
+
+# Builds
+build/
