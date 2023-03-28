@@ -5,17 +5,20 @@ using namespace cv;
 
 void create_images(int frames, int rows, int cols, long size, uint8_t* index, Mat** images){
     long loopIndex = 0;
+    int surplusBits = size % 3;
+    int pixelsInResult = size/3 + (surplusBits == 0 ? 0 : 1);
 
     for (int i = 0; i < frames; i++) {
         images[i] = new cv::Mat(rows, cols, CV_8UC3); // create a new cv::Mat object
     }
     //Split 64 bit number into 3*8bit number to encode size in pixels
-    uint64_t number = size;
+    printf("%i\n", pixelsInResult);
+    uint32_t number = pixelsInResult;
     uint8_t part1 = (number >> 16) & 0xFF;  // Most significant 8 bits
     uint8_t part2 = (number >> 8) & 0xFF;   // Middle 8 bits
     uint8_t part3 = number & 0xFF;
     (images[0])->at<Vec3b>(Point(0,0)) = Vec3b (part1, part2, part3);
-    (images[0])->at<Vec3b>(Point(1,0)) = Vec3b (rows, cols, cols);
+    (images[0])->at<Vec3b>(Point(1,0)) = Vec3b (rows, cols, surplusBits);
 
     printf("%i   %i    %i\n", part1, part2, part3);
     for(int i = 0; i < frames; i++){
@@ -28,9 +31,9 @@ void create_images(int frames, int rows, int cols, long size, uint8_t* index, Ma
 
                 //Check if we're at the last byte
                 if(loopIndex == size){
-                    return;
-                }
-                
+                        return;
+                    }
+
                 uint8_t byteOne = *index;
                 index += 1;
                 
@@ -71,7 +74,6 @@ int main() {
     int cols = 255;
     int rows = 255;
     int frames = size/(3*rows*cols);
-    int leftOverPixels = size - frames * (cols * rows);
     //We do this to account for the last non-full frame
     frames++;
 
