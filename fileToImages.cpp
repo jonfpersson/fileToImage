@@ -15,12 +15,17 @@ void create_images(int frames, int rows, int cols, long size, uint8_t* index, Ma
     uint8_t part2 = (number >> 8) & 0xFF;   // Middle 8 bits
     uint8_t part3 = number & 0xFF;
     (images[0])->at<Vec3b>(Point(0,0)) = Vec3b (part1, part2, part3);
-    (images[0])->at<Vec3b>(Point(0,1)) = Vec3b (rows, cols, cols);
+    (images[0])->at<Vec3b>(Point(1,0)) = Vec3b (rows, cols, cols);
 
     printf("%i   %i    %i\n", part1, part2, part3);
     for(int i = 0; i < frames; i++){
         for(int row = 0; row < rows; row++){
-            for(int col = 2; col < cols; col++){
+            for(int col = 0; col < cols; col++){
+                //We are maunaly setting the pixel values for (0,0) and (1,0)
+                if(row == 0 && col == 0){
+                    col = 2;
+                }
+
                 //Check if we're at the last byte
                 if(loopIndex == size){
                     return;
@@ -37,7 +42,7 @@ void create_images(int frames, int rows, int cols, long size, uint8_t* index, Ma
 
                 loopIndex += 3;
                 //Set the colors (bytes)
-                (images[i])->at<Vec3b>(Point(row, col)) = Vec3b (byteOne, byteTwo, byteThree);;
+                (images[i])->at<Vec3b>(Point(col, row)) = Vec3b (byteOne, byteTwo, byteThree);;
             }
         }
     }
@@ -52,6 +57,8 @@ int main() {
     long size = ftell(frog);
     fseek(frog, 0, SEEK_SET);
     if(size % 3 != 0){
+        printf("size %lu \n", size);
+
         fclose(frog);
         return 1;
     }
@@ -61,9 +68,8 @@ int main() {
     fread(buffer, sizeof(uint8_t), size, frog);
     uint8_t* index = buffer;
 
-    printf("size %lu \n", size);
-    int cols = 300;
-    int rows = 300;
+    int cols = 255;
+    int rows = 255;
     int frames = size/(3*rows*cols);
     int leftOverPixels = size - frames * (cols * rows);
     //We do this to account for the last non-full frame
