@@ -3,32 +3,37 @@
 #include <stdlib.h>
 using namespace cv;
 #define PLACE_HOLDER_VALUE (34)
-void create_images(int frames, int rows, int cols, long size, uint8_t* index, Mat** images){
+
+void setPixels(Mat** images, uint32_t valueToEncode, uint32_t x, uint32_t y){
+    uint8_t part1 = (valueToEncode >> 16) & 0xFF;  // Most significant 8 bits
+    uint8_t part2 = (valueToEncode >> 8) & 0xFF;   // Middle 8 bits
+    uint8_t part3 = valueToEncode & 0xFF;
+    (images[0])->at<Vec3b>(Point(x,y)) = Vec3b (part1, part2, part3);
+}
+void create_images(uint32_t frames, uint32_t rows, uint32_t cols, long size, uint8_t* index, Mat** images){
     long loopIndex = 0;
-    int surplusBits = size % 3;
-    printf("surplus %i\n", surplusBits);
+    uint32_t surplusBits = size % 3;
+
     //We add an extra pixel where one or two bits are the surplus bytes
     //If surplus is zero, we add none extra
-    int pixelsInResult = size/3 + (surplusBits == 0 ? 0 : 1);
-
-    for (int i = 0; i < frames; i++) {
+    uint32_t pixelsInResult = size/3 + (surplusBits == 0 ? 0 : 1);
+    printf("%i\n", pixelsInResult);
+    for (uint32_t i = 0; i < frames; i++) {
         images[i] = new cv::Mat(rows, cols, CV_8UC3);
     }
-    //Split 64 bit number into 3*8bit number to encode size in pixels
-    uint32_t number = pixelsInResult;
-    uint8_t part1 = (number >> 16) & 0xFF;  // Most significant 8 bits
-    uint8_t part2 = (number >> 8) & 0xFF;   // Middle 8 bits
-    uint8_t part3 = number & 0xFF;
-    (images[0])->at<Vec3b>(Point(0,0)) = Vec3b (part1, part2, part3);
-    (images[0])->at<Vec3b>(Point(1,0)) = Vec3b (rows, cols, surplusBits);
 
-    printf("%i   %i    %i\n", part1, part2, part3);
-    for(int i = 0; i < frames; i++){
-        for(int row = 0; row < rows; row++){
-            for(int col = 0; col < cols; col++){
+    //Split numbers into 3*8bit and encode in pixels
+    setPixels(images, pixelsInResult, 0,0);
+    setPixels(images, rows, 1,0);
+    setPixels(images, cols, 2,0);
+    (images[0])->at<Vec3b>(Point(3,0)) = Vec3b (surplusBits, surplusBits, surplusBits);
+
+    for(uint32_t i = 0; i < frames; i++){
+        for(uint32_t row = 0; row < rows; row++){
+            for(uint32_t col = 0; col < cols; col++){
                 //We are maunaly setting the pixel values for (0,0) and (1,0)
                 if(row == 0 && col == 0){
-                    col = 2;
+                    col = 4;
                 }
 
                 //Check if we're at the last byte
@@ -90,9 +95,9 @@ int main() {
     fread(buffer, sizeof(uint8_t), size, frog);
     uint8_t* index = buffer;
 
-    int cols = 255;
-    int rows = 255;
-    int frames = size/(3*rows*cols);
+    uint32_t cols = 1920;
+    uint32_t rows = 1080;
+    uint32_t frames = size/(3*rows*cols);
     //We do this to account for the last non-full frame
     frames++;
 
@@ -102,7 +107,7 @@ int main() {
     create_images(frames, rows, cols, size, index, images);
 
     // free the memory
-    for (int i = 0; i < frames; i++) {
+    for (uint32_t i = 0; i < frames; i++) {
         imwrite("pics/" + std::to_string(i) + ".png",*images[i]);
         // delete the cv::Mat object
         delete images[i];
