@@ -33,21 +33,18 @@ int main() {
     Vec3b secondPixel = image.at<Vec3b>(0,1);
     int originalRows = secondPixel.val[0];
     int originalCols = secondPixel.val[1];
-    printf("%i\n", size/3);
+    int surplusBits = secondPixel.val[2];
 
     int index = 0;
-    // Loop through each pixel in the image
-    for(int row = 0; row < rows; row++)
-    {
-        for(int col = 0; col < cols; col++)
-        {
+    // Loop through each pixel in the encoded image
+    for(int row = 0; row < rows; row++) {
+        for(int col = 0; col < cols; col++) {
             if(index == size/3){
                 goto end;
             }
             if(row == 0 && col == 0){
                 col = 2;
             }
-
 
             // Get the RGB values of the current pixel
             Vec3b pixel = image.at<Vec3b>(row, col);
@@ -56,8 +53,16 @@ int main() {
             int red = pixel.val[2];
 
             // Write some bytes to the output file
+            // Only write correct amount bytes
             out.put(blue);
+            
+            if(surplusBits == 1 && index == size-1)
+                return 0;
             out.put(green);
+            
+            if(surplusBits == 2 && index == size-1)
+                return 0;
+
             out.put(red);
             
             index++;

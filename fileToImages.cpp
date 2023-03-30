@@ -2,17 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 using namespace cv;
-
+#define PLACE_HOLDER_VALUE (34)
 void create_images(int frames, int rows, int cols, long size, uint8_t* index, Mat** images){
     long loopIndex = 0;
     int surplusBits = size % 3;
+    printf("surplus %i\n", surplusBits);
+    //We add an extra pixel where one or two bits are the surplus bytes
+    //If surplus is zero, we add none extra
     int pixelsInResult = size/3 + (surplusBits == 0 ? 0 : 1);
 
     for (int i = 0; i < frames; i++) {
-        images[i] = new cv::Mat(rows, cols, CV_8UC3); // create a new cv::Mat object
+        images[i] = new cv::Mat(rows, cols, CV_8UC3);
     }
     //Split 64 bit number into 3*8bit number to encode size in pixels
-    printf("%i\n", pixelsInResult);
     uint32_t number = pixelsInResult;
     uint8_t part1 = (number >> 16) & 0xFF;  // Most significant 8 bits
     uint8_t part2 = (number >> 8) & 0xFF;   // Middle 8 bits
@@ -30,29 +32,49 @@ void create_images(int frames, int rows, int cols, long size, uint8_t* index, Ma
                 }
 
                 //Check if we're at the last byte
-                if(loopIndex == size){
-                        return;
-                    }
+                if(loopIndex == size-1 && surplusBits == 0){
+                    return;
+                }
 
+                //Read byte 1
                 uint8_t byteOne = *index;
-                index += 1;
                 
+                //Check if we're at the last byte and if that byte's a surplus
+                if(loopIndex == size-1 && surplusBits == 1){
+                    (images[i])->at<Vec3b>(Point(col, row)) = Vec3b (byteOne, PLACE_HOLDER_VALUE, PLACE_HOLDER_VALUE);
+                    return;
+                }
+                
+                //Increment counter and read byte
+                index += 1;
                 uint8_t byteTwo = *index;
-                index += 1;
-                
-                uint8_t byteThree = *index;
-                index += 1;
+                loopIndex++;
 
-                loopIndex += 3;
+                if(loopIndex == size-1 && surplusBits == 2){
+                    (images[i])->at<Vec3b>(Point(col, row)) = Vec3b (byteOne, byteTwo, PLACE_HOLDER_VALUE);
+                    return;
+                }
+
+                //Increment counter and read byte
+                index += 1;
+                uint8_t byteThree = *index;
+                loopIndex++;
+
+                //Increment for next round if not at eof
+                if(loopIndex != size-1){
+                    index += 1;
+                    loopIndex++;
+                }
+                
                 //Set the colors (bytes)
-                (images[i])->at<Vec3b>(Point(col, row)) = Vec3b (byteOne, byteTwo, byteThree);;
+                (images[i])->at<Vec3b>(Point(col, row)) = Vec3b (byteOne, byteTwo, byteThree);
             }
         }
     }
 }
 
 int main() {
-    FILE *frog = fopen("frog3.jpg","rb");
+    FILE *frog = fopen("frog.jpg","rb");
     
     //Get file size
     fseek(frog, 0, SEEK_END);
@@ -61,9 +83,6 @@ int main() {
     fseek(frog, 0, SEEK_SET);
     if(size % 3 != 0){
         printf("size %lu \n", size);
-
-        fclose(frog);
-        return 1;
     }
 
     //Allocate memory for picture
